@@ -263,6 +263,7 @@ func convertSchemaSQL(w http.ResponseWriter, r *http.Request) {
 		SessionName:  "NewSession",
 		DatabaseType: sessionState.Driver,
 		DatabaseName: sessionState.DbName,
+		Dialect:      sessionState.Dialect,
 	}
 
 	convm := session.ConvWithMetadata{
@@ -280,7 +281,15 @@ func convertSchemaSQL(w http.ResponseWriter, r *http.Request) {
 type dumpConfig struct {
 	Driver   string `json:"Driver"`
 	FilePath string `json:"Path"`
-	Dialect  string `json:"Dialect"`
+}
+
+type spannerDetails struct {
+	Dialect string `json:"Dialect"`
+}
+
+type convertFromDumpRequest struct {
+	Config         dumpConfig     `json:"Config"`
+	SpannerDetails spannerDetails `json:"SpannerDetails"`
 }
 
 func setSourceDBDetailsForDump(w http.ResponseWriter, r *http.Request) {
@@ -380,22 +389,22 @@ func convertSchemaDump(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Body Read Error : %v", err), http.StatusInternalServerError)
 		return
 	}
-	var dc dumpConfig
+	var dc convertFromDumpRequest
 	err = json.Unmarshal(reqBody, &dc)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Request Body parse error : %v", err), http.StatusBadRequest)
 		return
 	}
-	f, err := os.Open("upload-file/" + dc.FilePath)
+	f, err := os.Open("upload-file/" + dc.Config.FilePath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to open dump file : %v, no such file or directory", dc.FilePath), http.StatusNotFound)
+		http.Error(w, fmt.Sprintf("Failed to open dump file : %v, no such file or directory", dc.Config.FilePath), http.StatusNotFound)
 		return
 	}
 	// We don't support Dynamodb in web hence no need to pass schema sample size here.
-	sourceProfile, _ := profiles.NewSourceProfile("", dc.Driver)
-	sourceProfile.Driver = dc.Driver
+	sourceProfile, _ := profiles.NewSourceProfile("", dc.Config.Driver)
+	sourceProfile.Driver = dc.Config.Driver
 	targetProfile, _ := profiles.NewTargetProfile("")
-	targetProfile.TargetDb = utils.DialectToTarget(dc.Dialect)
+	targetProfile.TargetDb = utils.DialectToTarget(dc.SpannerDetails.Dialect)
 	conv, err := conversion.SchemaConv(sourceProfile, targetProfile, &utils.IOStreams{In: f, Out: os.Stdout})
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Schema Conversion Error : %v", err), http.StatusNotFound)
@@ -404,8 +413,9 @@ func convertSchemaDump(w http.ResponseWriter, r *http.Request) {
 
 	sessionMetadata := session.SessionMetadata{
 		SessionName:  "NewSession",
-		DatabaseType: dc.Driver,
-		DatabaseName: filepath.Base(dc.FilePath),
+		DatabaseType: dc.Config.Driver,
+		DatabaseName: filepath.Base(dc.Config.FilePath),
+		Dialect:      dc.SpannerDetails.Dialect,
 	}
 
 	sessionState := session.GetSessionState()
@@ -418,13 +428,13 @@ func convertSchemaDump(w http.ResponseWriter, r *http.Request) {
 	index.IndexSuggestion()
 
 	sessionState.SessionMetadata = sessionMetadata
-	sessionState.Driver = dc.Driver
+	sessionState.Driver = dc.Config.Driver
 	sessionState.DbName = ""
 	sessionState.SessionFile = ""
 	sessionState.SourceDB = nil
-	sessionState.Dialect = dc.Dialect
+	sessionState.Dialect = dc.SpannerDetails.Dialect
 	sessionState.SourceDBConnDetails = session.SourceDBConnDetails{
-		Path:           dc.FilePath,
+		Path:           dc.Config.FilePath,
 		ConnectionType: helpers.DUMP_MODE,
 	}
 
@@ -482,6 +492,7 @@ func loadSession(w http.ResponseWriter, r *http.Request) {
 		SessionName:  "NewSession",
 		DatabaseType: s.Driver,
 		DatabaseName: metadata.DatabaseName,
+		Dialect:      utils.TargetDbToDialect(conv.TargetDb),
 	}
 
 	if sessionMetadata.DatabaseName == "" {
@@ -556,6 +567,16 @@ func getOverview(w http.ResponseWriter, r *http.Request) {
 	overview := buf.String()
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(overview)
+}
+
+func getGoogleSQLToPGSQLTypemap(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ddl.GOOGLE_SQL_TO_PGSQL_TYPEMAP)
+}
+
+func getPGSQLToGoogleSQLTypemap(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(ddl.PGSQL_TO_GOOGLE_SQL_TYPEMAP)
 }
 
 // getTypeMap returns the source to Spanner typemap only for the
@@ -1619,7 +1640,7 @@ func getSourceDestinationSummary(w http.ResponseWriter, r *http.Request) {
 	sessionSummary.NodeCount = int(instanceInfo.NodeCount)
 	sessionSummary.ProcessingUnits = int(instanceInfo.ProcessingUnits)
 	sessionSummary.Instance = sessionState.SpannerInstanceID
-	sessionSummary.Dialect = sessionState.Dialect
+	sessionSummary.Dialect = helpers.GetDialectDisplayStringFromDialect(sessionState.Dialect)
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(sessionSummary)
 }
