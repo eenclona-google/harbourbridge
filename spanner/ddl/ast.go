@@ -22,7 +22,6 @@ package ddl
 
 import (
 	"fmt"
-	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -51,7 +50,7 @@ const (
 	// Json represent JSON type.
 	JSON string = "JSON"
 	// MaxLength is a sentinel for Type's Len field, representing the MAX value.
-	MaxLength = math.MaxInt64
+	MaxLength = 8000
 	// StringMaxLength represents maximum allowed STRING length.
 	StringMaxLength = 2621440
 
