@@ -2248,9 +2248,6 @@ func addTypeToList(convertedType string, spType string, issues []internal.Schema
 
 func initializeTypeMap() {
 	sessionState := session.GetSessionState()
-
-	uniqueid.InitObjectId()
-	sessionState.Conv = internal.MakeConv()
 	var toddl common.ToDdl
 	// Initialize mysqlTypeMap.
 	toddl = mysql.InfoSchemaImpl{}.GetToDdl()
@@ -2305,6 +2302,14 @@ func initializeTypeMap() {
 		}
 		oracleTypeMap[srcTypeName] = l
 	}
+	config := config.TryInitializeSpannerConfig()
+	session.SetSessionStorageConnectionState(config.GCPProjectID, config.SpannerInstanceID)
+}
+
+func init() {
+	sessionState := session.GetSessionState()
+	uniqueid.InitObjectId()
+	sessionState.Conv = internal.MakeConv()
 	config := config.TryInitializeSpannerConfig()
 	session.SetSessionStorageConnectionState(config.GCPProjectID, config.SpannerInstanceID)
 }
