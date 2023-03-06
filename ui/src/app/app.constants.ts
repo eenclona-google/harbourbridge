@@ -44,7 +44,8 @@ export enum ObjectDetailNodeType {
 
 export enum MigrationTypes {
   bulkMigration = 'bulk',
-  lowDowntimeMigration = 'lowdt'
+  lowDowntimeMigration = 'lowdt',
+  dataprocMigration = 'dproc'
 }
 
 export enum MigrationDetails {
