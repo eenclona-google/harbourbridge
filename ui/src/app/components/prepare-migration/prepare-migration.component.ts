@@ -372,7 +372,8 @@ export class PrepareMigrationComponent implements OnInit {
     })
   }
 
-  //TODO: eenclona@ will update with dataproc data only vs schema only vs data and schema
+  //TODO: eenclona@ will update with correct payload for dataproc migration
+  // also considering data only vs schema only vs data and schema
   migrate() {
     this.resetValues()
     let payload: IMigrationDetails = {

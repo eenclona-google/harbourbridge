@@ -124,6 +124,20 @@
                             </mat-icon>
                         </button></span>
                 </p>
+                <!-- TODO: eenclona@ will update with dataproc specific configurations -->
+                <p class="point" *ngIf="(selectedMigrationType ==='dproc') && !(selectedMigrationMode ==='Schema')">
+                    <span class="bullet">2</span>
+                    <span>Configure Dataproc properties</span><span><button mat-button class="configure"
+                            (click)="openDataflowForm()"
+                            [disabled]="isMigrationInProgress || !isTargetDetailSet">
+                            Configure
+                            <mat-icon>edit</mat-icon>
+                            <mat-icon *ngIf="isDataflowConfigurationSet" class="success"
+                                matTooltip="Dataflow Configured" matTooltipPosition="above">
+                                check_circle
+                            </mat-icon>
+                        </button></span>
+                </p>
             </div>
         </mat-card>
         <br />

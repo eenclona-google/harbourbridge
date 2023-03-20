@@ -1,6 +1,7 @@
 import { IDataflowConfig } from "./profile";
 import ITargetDetails from "./target-details";
 
+// TODO: eenclona@ will probably need to update this with dataproc specific payload info
 export default interface IMigrationDetails {
     TargetDetails: ITargetDetails
     DataflowConfig: IDataflowConfig
