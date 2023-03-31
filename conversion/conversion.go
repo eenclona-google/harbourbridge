@@ -187,6 +187,18 @@ func performSnapshotMigration(config writer.BatchWriterConfig, conv *internal.Co
 	return batchWriter
 }
 
+func performDataprocMigration(sourceProfile profiles.SourceProfile, config writer.BatchWriterConfig, conv *internal.Conv, client *sp.Client, infoSchema common.InfoSchema) *writer.BatchWriter {
+	common.SetRowStats(conv, infoSchema)
+	totalRows := conv.Rows()
+	if !conv.Audit.DryRun {
+		conv.Audit.Progress = *internal.NewProgress(totalRows, "Writing data to Spanner", internal.Verbose(), false, int(internal.DataWriteInProgress))
+	}
+	batchWriter := populateDataConv(conv, config, client)
+	common.ProcessDataWithDataproc(conv, infoSchema, sourceProfile.Conn.Mysql.Host, sourceProfile.Conn.Mysql.Port, sourceProfile.Conn.Mysql.User, sourceProfile.Conn.Mysql.Pwd)
+	batchWriter.Flush()
+	return batchWriter
+}
+
 func snapshotMigrationHandler(sourceProfile profiles.SourceProfile, config writer.BatchWriterConfig, conv *internal.Conv, client *sp.Client, infoSchema common.InfoSchema) (*writer.BatchWriter, error) {
 	switch sourceProfile.Driver {
 	// Skip snapshot migration via harbourbridge for mysql and oracle since dataflow job will job will handle this from backfilled data.
@@ -205,6 +217,12 @@ func dataFromDatabase(ctx context.Context, sourceProfile profiles.SourceProfile,
 		return nil, err
 	}
 	var streamInfo map[string]interface{}
+	println(sourceProfile.Conn.Dataproc)
+	if sourceProfile.Conn.Dataproc {
+		//TODO if user choose dataproc template migration path
+		println("**********Dataproc flow started")
+		return performDataprocMigration(sourceProfile, config, conv, client, infoSchema), nil
+	}
 	if sourceProfile.Conn.Streaming {
 		streamInfo, err = infoSchema.StartChangeDataCapture(ctx, conv)
 		if err != nil {
