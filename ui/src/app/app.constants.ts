@@ -109,3 +109,10 @@ export const Dataflow = {
   Subnetwork: 'subnetwork',
   IsDataflowConfigSet: 'isDataflowConfigSet',
 }
+
+export const Dataproc = {
+  Subnetwork: 'subnetwork',
+  Hostname: 'hostname',
+  Port: 'port',
+  IsDataprocConfigSet: 'isDataprocConfigSet',
+}

@@ -18,3 +18,9 @@ export interface IDataflowConfig{
     Network: string
     Subnetwork: string
 }
+
+export interface IDataprocConfig{
+    Subnetwork: string
+    Hostname: string
+    Port: string
+}

@@ -123,15 +123,22 @@ type progressDetails struct {
 }
 
 type migrationDetails struct {
-	TargetDetails targetDetails `json:"TargetDetails"`
+	TargetDetails  targetDetails  `json:"TargetDetails"`
 	DataflowConfig dataflowConfig `json:"DataflowConfig"`
-	MigrationMode string        `json:MigrationMode`
-	MigrationType string        `json:MigrationType`
+	DataprocConfig dataprocConfig `json:"DataprocConfig"`
+	MigrationMode  string         `json:MigrationMode`
+	MigrationType  string         `json:MigrationType`
 }
 
 type dataflowConfig struct {
-	Network string `json:Network`
-	Subnetwork string  `json:Subnetwork`
+	Network    string `json:Network`
+	Subnetwork string `json:Subnetwork`
+}
+
+type dataprocConfig struct {
+	Subnetwork string `json:"Subnetwork"`
+	Hostname   string `json:"Hostname"`
+	Port       string `json:"Port"`
 }
 
 type targetDetails struct {
@@ -147,9 +154,9 @@ type StreamingCfg struct {
 	TmpDir        string        `json:"tmpDir"`
 }
 type DataflowCfg struct {
-	JobName  string `json:"JobName"`
-	Location string `json:"Location"`
-	Network string `json:"Network"`
+	JobName    string `json:"JobName"`
+	Location   string `json:"Location"`
+	Network    string `json:"Network"`
 	Subnetwork string `json:"Subnetwork"`
 }
 type ConnectionConfig struct {
@@ -1588,6 +1595,8 @@ func updateProgress(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(detail)
 }
 
+//TODO: eenclona@ - create updateDataprocProgress() function here similar to one above
+
 func migrate(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("request started", "method", r.Method, "path", r.URL.Path)
@@ -1693,6 +1702,20 @@ func getSourceAndTargetProfiles(sessionState *session.SessionState, details migr
 			return profiles.SourceProfile{}, profiles.TargetProfile{}, utils.IOStreams{}, "", fmt.Errorf("error while creating streaming config file: %v", err)
 		}
 		sourceProfileString = sourceProfileString + fmt.Sprintf(",streamingCfg=%v", fileName)
+	} else if details.MigrationType == helpers.DATAPROC_MIGRATION {
+		//TODO: eenclona@ do we need to modify session state here?
+		//do we need tpo build sourceProfileStrin here?
+		//set conn.dataproc boolean to be true somewhere
+
+		//TODO: eenclona@ this is from default else statement below must modify
+		sessionState.Conv.Audit.MigrationRequestId = "HB-" + uuid.New().String()
+		sessionState.Bucket = strings.ToLower(sessionState.Conv.Audit.MigrationRequestId)
+		sessionState.RootPath = "/"
+		//////
+
+		dprocConfig := helpers.DATAPROC_MIGRATION
+		sourceProfileString = sourceProfileString + fmt.Sprintf(",dprocCfg=%v", dprocConfig)
+
 	} else {
 		sessionState.Conv.Audit.MigrationRequestId = "HB-" + uuid.New().String()
 		sessionState.Bucket = strings.ToLower(sessionState.Conv.Audit.MigrationRequestId)
@@ -1745,9 +1768,9 @@ func createStreamingCfgFile(sessionState *session.SessionState, targetDetails ta
 			},
 		},
 		DataflowCfg: DataflowCfg{
-			JobName:  "",
-			Location: sessionState.Region,
-			Network: dataflowConfig.Network,
+			JobName:    "",
+			Location:   sessionState.Region,
+			Network:    dataflowConfig.Network,
 			Subnetwork: dataflowConfig.Subnetwork,
 		},
 		TmpDir: "gs://" + sessionState.Bucket + sessionState.RootPath,

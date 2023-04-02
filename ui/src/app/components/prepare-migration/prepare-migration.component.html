@@ -124,16 +124,15 @@
                             </mat-icon>
                         </button></span>
                 </p>
-                <!-- TODO: eenclona@ will update with dataproc specific configurations -->
                 <p class="point" *ngIf="(selectedMigrationType ==='dproc') && !(selectedMigrationMode ==='Schema')">
                     <span class="bullet">2</span>
-                    <span>Configure Dataproc properties</span><span><button mat-button class="configure"
-                            (click)="openDataflowForm()"
+                    <span>Configure Dataproc</span><span><button mat-button class="configure"
+                            (click)="openDataprocForm()"
                             [disabled]="isMigrationInProgress || !isTargetDetailSet">
                             Configure
                             <mat-icon>edit</mat-icon>
-                            <mat-icon *ngIf="isDataflowConfigurationSet" class="success"
-                                matTooltip="Dataflow Configured" matTooltipPosition="above">
+                            <mat-icon *ngIf="isDataprocConfigurationSet" class="success"
+                                matTooltip="Dataproc Configured" matTooltipPosition="above">
                                 check_circle
                             </mat-icon>
                         </button></span>
@@ -189,7 +188,7 @@
     <div class="migrate">
         <span *ngIf="!isLowDtMigrationRunning">
             <button mat-raised-button type="submit" color="primary" (click)="migrate()"
-                [disabled]="!((isTargetDetailSet && (selectedMigrationType ==='lowdt') && isSourceConnectionProfileSet && isTargetConnectionProfileSet) || (isTargetDetailSet && (selectedMigrationType ==='bulk'))) || isMigrationInProgress">Migrate</button>
+                [disabled]="!((isTargetDetailSet && (selectedMigrationType ==='lowdt') && isSourceConnectionProfileSet && isTargetConnectionProfileSet) || (isTargetDetailSet && (selectedMigrationType ==='bulk')) || (isTargetDetailSet && (selectedMigrationType === 'dproc') && isDataprocConfigurationSet) || isMigrationInProgress)">Migrate</button>
         </span>
         <span *ngIf="isLowDtMigrationRunning">
             <button mat-raised-button color="primary" (click)="endMigration()">End Migration</button>

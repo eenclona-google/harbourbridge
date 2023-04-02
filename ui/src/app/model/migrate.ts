@@ -1,10 +1,10 @@
-import { IDataflowConfig } from "./profile";
+import { IDataflowConfig, IDataprocConfig } from "./profile";
 import ITargetDetails from "./target-details";
 
-// TODO: eenclona@ will probably need to update this with dataproc specific payload info
 export default interface IMigrationDetails {
     TargetDetails: ITargetDetails
     DataflowConfig: IDataflowConfig
+    DataprocConfig: IDataprocConfig
     MigrationType: string
     MigrationMode: string
 }
@@ -15,6 +15,7 @@ export interface IProgress {
     ProgressStatus: number
 }
 
+// TODO: eenclona@ will probably need to update this with dataproc specific generated resources
 export interface IGeneratedResources {
     DatabaseName: string
     DatabaseUrl: string
