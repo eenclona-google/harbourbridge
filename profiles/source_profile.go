@@ -358,7 +358,6 @@ func NewSourceProfileConnectionOracle(params map[string]string) (SourceProfileCo
 
 type SourceProfileConnection struct {
 	Ty        SourceProfileConnectionType
-	Dataproc  bool
 	Streaming bool
 	Dataproc  bool
 	Mysql     SourceProfileConnectionMySQL
