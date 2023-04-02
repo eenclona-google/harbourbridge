@@ -17,12 +17,17 @@ package common
 import (
 	"context"
 	"fmt"
+	"log"
 
 	sp "cloud.google.com/go/spanner"
 
 	"github.com/cloudspannerecosystem/harbourbridge/internal"
 	"github.com/cloudspannerecosystem/harbourbridge/schema"
 	"github.com/cloudspannerecosystem/harbourbridge/spanner/ddl"
+
+	dataproc "cloud.google.com/go/dataproc/apiv1"
+	"cloud.google.com/go/dataproc/apiv1/dataprocpb"
+	"google.golang.org/api/option"
 )
 
 // InfoSchema contains database information.
@@ -103,6 +108,107 @@ func ProcessData(conv *internal.Conv, infoSchema InfoSchema) {
 			conv.DataFlush()
 		}
 	}
+}
+
+func ProcessDataWithDataproc(conv *internal.Conv, infoSchema InfoSchema, hostname string, port string, username string, pwd string) {
+	// Tables are ordered in alphabetical order with one exception: interleaved
+	// tables appear after the population of their parent table.
+	orderTableNames := ddl.OrderTables(conv.SpSchema)
+
+	for _, spannerTable := range orderTableNames {
+		srcTable, _ := internal.GetSourceTable(conv, spannerTable)
+		srcSchema := conv.SrcSchema[srcTable]
+		//spTable, err1 := internal.GetSpannerTable(conv, srcTable)
+		//spCols, err2 := internal.GetSpannerCols(conv, srcTable, srcSchema.ColNames)
+		//spSchema, ok := conv.SpSchema[spTable]
+		//TODO - deleted error check. add it back
+
+		err := TriggerDataprocTemplate(srcTable, srcSchema.Schema, hostname, port, username, pwd) //infoSchema.ProcessData(conv, srcTable, srcSchema, spTable, spCols, spSchema)
+		if err != nil {
+			return
+		}
+		if conv.DataFlush != nil {
+			conv.DataFlush()
+		}
+	}
+}
+
+// Function to trigger dataproc template
+func TriggerDataprocTemplate(srcTable string, srcSchema string, hostname string, port string, username string, pwd string) error {
+	ctx := context.Background()
+
+	println("Triggering Dataproc template for " + srcSchema + "." + srcTable)
+
+	// Create the batch controller cliermnt.
+	batchEndpoint := fmt.Sprintf("%s-dataproc.googleapis.com:443", "us-west1")
+	batchClient, err := dataproc.NewBatchControllerClient(ctx, option.WithEndpoint(batchEndpoint))
+
+	if err != nil {
+		log.Fatalf("error creating the batch client: %s\n", err)
+	}
+
+	defer batchClient.Close()
+
+	req := &dataprocpb.CreateBatchRequest{
+		Parent: "projects/yadavaja-sandbox/locations/us-west1",
+		Batch: &dataprocpb.Batch{
+			RuntimeConfig: &dataprocpb.RuntimeConfig{
+				Version: "1.1",
+			},
+			EnvironmentConfig: &dataprocpb.EnvironmentConfig{
+				ExecutionConfig: &dataprocpb.ExecutionConfig{
+					Network: &dataprocpb.ExecutionConfig_SubnetworkUri{
+						SubnetworkUri: "projects/yadavaja-sandbox/regions/us-west1/subnetworks/test-subnet1",
+					},
+				},
+			},
+			BatchConfig: &dataprocpb.Batch_SparkBatch{
+				SparkBatch: &dataprocpb.SparkBatch{
+					Driver: &dataprocpb.SparkBatch_MainClass{
+						MainClass: "com.google.cloud.dataproc.templates.main.DataProcTemplate",
+					},
+					Args: []string{"--template",
+						"JDBCTOSPANNER",
+						"--templateProperty",
+						"project.id=yadavaja-sandbox",
+						"--templateProperty",
+						"jdbctospanner.jdbc.url=jdbc:mysql://" + hostname + ":" + port + "/" + srcSchema + "?user=" + username + "&password=" + pwd,
+						"--templateProperty",
+						"jdbctospanner.jdbc.driver.class.name=com.mysql.jdbc.Driver",
+						"--templateProperty",
+						"jdbctospanner.sql=select * from " + srcSchema + "." + srcTable + " LIMIT 5",
+						"--templateProperty",
+						"jdbctospanner.output.instance=dataproc-spark-test",
+						"--templateProperty",
+						"jdbctospanner.output.database=eenclona-test-db",
+						"--templateProperty",
+						"jdbctospanner.output.table=" + srcTable,
+						"--templateProperty",
+						"jdbctospanner.output.primaryKey=keynumber",
+						"--templateProperty",
+						"jdbctospanner.output.saveMode=Append"},
+					JarFileUris: []string{"file:///usr/lib/spark/external/spark-avro.jar",
+						"gs://dataproc-templates-binaries/latest/java/dataproc-templates.jar",
+						"gs://dataproc-templates/jars/mysql-connector-java.jar"},
+				},
+			},
+		},
+	}
+
+	op, err := batchClient.CreateBatch(ctx, req)
+	if err != nil {
+		println("error creating the batch: %s\n", err)
+	}
+
+	resp, err := op.Wait(ctx)
+	if err != nil {
+		println("error completing the batch: %s\n", err)
+	}
+
+	batchName := resp.GetName()
+
+	println(batchName)
+	return nil
 }
 
 // SetRowStats populates conv with the number of rows in each table.
