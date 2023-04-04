@@ -52,10 +52,18 @@ type TargetProfileConnection struct {
 	Sp TargetProfileConnectionSpanner
 }
 
+type DataprocConfig struct {
+	Hostname   string
+	Subnetwork string
+	Port       string
+	TargetDB   string
+}
+
 type TargetProfile struct {
 	TargetDb string
 	Ty       TargetProfileType
 	Conn     TargetProfileConnection
+	Dc       DataprocConfig
 }
 
 // ToLegacyTargetDb converts source-profile to equivalent legacy global flag
@@ -153,6 +161,7 @@ func NewTargetProfile(s string) (TargetProfile, error) {
 	}
 
 	sp := TargetProfileConnectionSpanner{}
+	dc := DataprocConfig{}
 	if endpoint, ok := params["endpoint"]; ok {
 		sp.Endpoint = endpoint
 	}
@@ -168,7 +177,19 @@ func NewTargetProfile(s string) (TargetProfile, error) {
 	if dialect, ok := params["dialect"]; ok {
 		sp.Dialect = dialect
 	}
+	if dialect, ok := params["dpsubnetwork"]; ok {
+		dc.Subnetwork = dialect
+	}
+	if dialect, ok := params["dphostname"]; ok {
+		dc.Hostname = dialect
+	}
+	if dialect, ok := params["dpport"]; ok {
+		dc.Port = dialect
+	}
+	if dialect, ok := params["targetdb"]; ok {
+		dc.TargetDB = dialect
+	}
 
 	conn := TargetProfileConnection{Ty: TargetProfileConnectionTypeSpanner, Sp: sp}
-	return TargetProfile{Ty: TargetProfileTypeConnection, Conn: conn}, nil
+	return TargetProfile{Ty: TargetProfileTypeConnection, Conn: conn, Dc: dc}, nil
 }

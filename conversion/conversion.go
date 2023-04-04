@@ -187,14 +187,35 @@ func performSnapshotMigration(config writer.BatchWriterConfig, conv *internal.Co
 	return batchWriter
 }
 
-func performDataprocMigration(sourceProfile profiles.SourceProfile, config writer.BatchWriterConfig, conv *internal.Conv, client *sp.Client, infoSchema common.InfoSchema) *writer.BatchWriter {
+func performDataprocMigration(sourceProfile profiles.SourceProfile, targetProfile profiles.TargetProfile, config writer.BatchWriterConfig, conv *internal.Conv, client *sp.Client, infoSchema common.InfoSchema) *writer.BatchWriter {
 	common.SetRowStats(conv, infoSchema)
 	totalRows := conv.Rows()
 	if !conv.Audit.DryRun {
 		conv.Audit.Progress = *internal.NewProgress(totalRows, "Writing data to Spanner", internal.Verbose(), false, int(internal.DataWriteInProgress))
 	}
 	batchWriter := populateDataConv(conv, config, client)
-	common.ProcessDataWithDataproc(conv, infoSchema, sourceProfile.Conn.Mysql.Host, sourceProfile.Conn.Mysql.Port, sourceProfile.Conn.Mysql.User, sourceProfile.Conn.Mysql.Pwd)
+
+	//Adding all dataproc configs to a map
+
+	dataprocConfig := map[string]string{}
+	dataprocConfig["hostname"] = sourceProfile.Conn.Mysql.Host
+	dataprocConfig["port"] = sourceProfile.Conn.Mysql.Port
+	dataprocConfig["user"] = sourceProfile.Conn.Mysql.User
+	dataprocConfig["pwd"] = sourceProfile.Conn.Mysql.Pwd
+	dataprocConfig["targetdb"] = targetProfile.Dc.TargetDB
+	dataprocConfig["instance"] = targetProfile.Conn.Sp.Instance
+	dataprocConfig["project"] = targetProfile.Conn.Sp.Project
+	if len(targetProfile.Dc.Hostname) > 1 {
+		dataprocConfig["hostname"] = targetProfile.Dc.Hostname
+	}
+	if len(targetProfile.Dc.Port) > 1 {
+		dataprocConfig["port"] = targetProfile.Dc.Port
+	}
+	if len(targetProfile.Dc.Subnetwork) > 1 {
+		dataprocConfig["subnet"] = targetProfile.Dc.Subnetwork
+	}
+
+	common.ProcessDataWithDataproc(conv, infoSchema, dataprocConfig)
 	batchWriter.Flush()
 	return batchWriter
 }
@@ -221,7 +242,7 @@ func dataFromDatabase(ctx context.Context, sourceProfile profiles.SourceProfile,
 	if sourceProfile.Conn.Dataproc {
 		//TODO if user choose dataproc template migration path
 		println("**********Dataproc flow started")
-		return performDataprocMigration(sourceProfile, config, conv, client, infoSchema), nil
+		return performDataprocMigration(sourceProfile, targetProfile, config, conv, client, infoSchema), nil
 	}
 	if sourceProfile.Conn.Streaming {
 		streamInfo, err = infoSchema.StartChangeDataCapture(ctx, conv)
