@@ -138,8 +138,13 @@ func TriggerDataprocTemplate(srcTable string, srcSchema string, primaryKeys stri
 
 	println("Triggering Dataproc template for " + srcSchema + "." + srcTable)
 
+	// Extract location from subnet
+	subnet := dataprocConfig["subnet"]
+	region_string := subnet[0:strings.Index(subnet, "/subnetworks")]
+	location := subnet[strings.LastIndex(region_string, "/")+1 : strings.LastIndex(subnet, "/subnetworks")]
+
 	// Create the batch controller cliermnt.
-	batchEndpoint := fmt.Sprintf("%s-dataproc.googleapis.com:443", "us-west1")
+	batchEndpoint := fmt.Sprintf("%s-dataproc.googleapis.com:443", location)
 	batchClient, err := dataproc.NewBatchControllerClient(ctx, option.WithEndpoint(batchEndpoint))
 
 	if err != nil {
@@ -149,7 +154,7 @@ func TriggerDataprocTemplate(srcTable string, srcSchema string, primaryKeys stri
 	defer batchClient.Close()
 
 	req := &dataprocpb.CreateBatchRequest{
-		Parent: "projects/yadavaja-sandbox/locations/us-west1",
+		Parent: "projects/" + dataprocConfig["project"] + "/locations/" + location,
 		Batch: &dataprocpb.Batch{
 			RuntimeConfig: &dataprocpb.RuntimeConfig{
 				Version: "1.1",
@@ -175,7 +180,7 @@ func TriggerDataprocTemplate(srcTable string, srcSchema string, primaryKeys stri
 						"--templateProperty",
 						"jdbctospanner.jdbc.driver.class.name=com.mysql.jdbc.Driver",
 						"--templateProperty",
-						"jdbctospanner.sql=select * from " + srcSchema + "." + srcTable + " LIMIT 5",
+						"jdbctospanner.sql=select * from " + srcSchema + "." + srcTable,
 						"--templateProperty",
 						"jdbctospanner.output.instance=" + dataprocConfig["instance"],
 						"--templateProperty",
@@ -202,11 +207,11 @@ func TriggerDataprocTemplate(srcTable string, srcSchema string, primaryKeys stri
 	resp, err := op.Wait(ctx)
 	if err != nil {
 		println("error completing the batch: %s\n", err)
+		println("Failing data migration from Dataproc template for " + srcSchema + "." + srcTable + " with batch id: " + resp.GetName())
 	}
 
-	batchName := resp.GetName()
+	println("Batch Name: " + resp.GetName())
 
-	println(batchName)
 	return nil
 }
 
