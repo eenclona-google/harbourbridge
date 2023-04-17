@@ -1595,8 +1595,6 @@ func updateProgress(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(detail)
 }
 
-//TODO: eenclona@ - create updateDataprocProgress() function here similar to one above
-
 func migrate(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("request started", "method", r.Method, "path", r.URL.Path)
