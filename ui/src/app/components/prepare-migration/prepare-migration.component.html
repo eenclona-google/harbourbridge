@@ -184,13 +184,19 @@
             <li>Dataflow job: <a [href]="resourcesGenerated.DataflowJobUrl" target="_blank">{{resourcesGenerated.DataflowJobName}}</a>
             </li>
         </span>
+        <span *ngIf="selectedMigrationType ==='dproc' && resourcesGenerated.DataprocJobUrls != null && resourcesGenerated.DataprocJobUrls.length > 0">
+            <h4>Dataproc Jobs: </h4>
+            <ul *ngFor="let url of resourcesGenerated.DataprocJobUrls; let i = index">
+                <li><a [href]="url" target="_blank">{{resourcesGenerated.DataprocJobIds[i]}}</a></li>
+            </ul>
+        </span>
     </div>
     <div class="migrate">
-        <span *ngIf="!isLowDtMigrationRunning">
+        <span *ngIf="!isLowDtMigrationRunning && !isDprocMigrationRunning">
             <button mat-raised-button type="submit" color="primary" (click)="migrate()"
                 [disabled]="!((isTargetDetailSet && (selectedMigrationType ==='lowdt') && isSourceConnectionProfileSet && isTargetConnectionProfileSet) || (isTargetDetailSet && (selectedMigrationType ==='bulk')) || (isTargetDetailSet && (selectedMigrationType === 'dproc') && isDataprocConfigurationSet) || isMigrationInProgress)">Migrate</button>
         </span>
-        <span *ngIf="isLowDtMigrationRunning">
+        <span *ngIf="isLowDtMigrationRunning || isDprocMigrationRunning">
             <button mat-raised-button color="primary" (click)="endMigration()">End Migration</button>
         </span>
     </div>

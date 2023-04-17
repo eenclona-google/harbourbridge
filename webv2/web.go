@@ -1672,6 +1672,10 @@ func getGeneratedResources(w http.ResponseWriter, r *http.Request) {
 		generatedResources.DataflowJobName = sessionState.Conv.Audit.StreamingStats.DataflowJobId
 		generatedResources.DataflowJobUrl = fmt.Sprintf("https://pantheon.corp.google.com/dataflow/jobs/%v/%v?project=%v", sessionState.Region, sessionState.Conv.Audit.StreamingStats.DataflowJobId, sessionState.GCPProjectID)
 	}
+	if len(sessionState.Conv.Audit.DataprocStats.DataprocJobUrls) > 0 {
+		generatedResources.DataprocJobUrls = sessionState.Conv.Audit.DataprocStats.DataprocJobUrls
+		generatedResources.DataprocJobIds = sessionState.Conv.Audit.DataprocStats.DataprocJobIds
+	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(generatedResources)
 }
@@ -1703,15 +1707,9 @@ func getSourceAndTargetProfiles(sessionState *session.SessionState, details migr
 		}
 		sourceProfileString = sourceProfileString + fmt.Sprintf(",streamingCfg=%v", fileName)
 	} else if details.MigrationType == helpers.DATAPROC_MIGRATION {
-		//TODO: eenclona@ do we need to modify session state here?
-		//do we need tpo build sourceProfileStrin here?
-		//set conn.dataproc boolean to be true somewhere
-
-		//TODO: eenclona@ this is from default else statement below must modify
 		sessionState.Conv.Audit.MigrationRequestId = "HB-" + uuid.New().String()
 		sessionState.Bucket = strings.ToLower(sessionState.Conv.Audit.MigrationRequestId)
 		sessionState.RootPath = "/"
-		//////
 
 		dprocConfig := helpers.DATAPROC_MIGRATION
 		sourceProfileString = sourceProfileString + fmt.Sprintf(",dprocCfg=%v", dprocConfig)
@@ -2184,6 +2182,8 @@ type GeneratedResources struct {
 	DataStreamJobUrl  string
 	DataflowJobName   string
 	DataflowJobUrl    string
+	DataprocJobUrls   []string
+	DataprocJobIds    []string
 }
 
 func addTypeToList(convertedType string, spType string, issues []internal.SchemaIssue, l []typeIssue) []typeIssue {

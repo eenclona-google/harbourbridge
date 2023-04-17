@@ -25,6 +25,8 @@ export interface IGeneratedResources {
     DataStreamJobUrl: string
     DataflowJobName: string
     DataflowJobUrl: string
+    DataprocJobUrls: string[]
+    DataprocJobIds: string[]
 }
 
 export interface ISourceAndTargetDetails {

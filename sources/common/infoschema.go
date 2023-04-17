@@ -111,45 +111,67 @@ func ProcessData(conv *internal.Conv, infoSchema InfoSchema) {
 	}
 }
 
-func ProcessDataWithDataproc(conv *internal.Conv, infoSchema InfoSchema, dataprocConfig map[string]string) {
+func ProcessDataWithDataproc(conv *internal.Conv, infoSchema InfoSchema, dataprocConfig map[string]string) error {
 	// Tables are ordered in alphabetical order with one exception: interleaved
 	// tables appear after the population of their parent table.
-	orderTableNames := ddl.OrderTables(conv.SpSchema)
 
+	orderTableNames := ddl.OrderTables(conv.SpSchema)
+	numberOfTables := int64(len(orderTableNames))
+
+	if !conv.Audit.DryRun {
+		conv.Audit.Progress = *internal.NewProgress(numberOfTables, "Writing data to Spanner via Dataproc", internal.Verbose(), false, int(internal.DataWriteInProgress))
+	}
+
+	progressCtr := 0
 	for _, spannerTable := range orderTableNames {
+
 		srcTable, _ := internal.GetSourceTable(conv, spannerTable)
 		srcSchema := conv.SrcSchema[srcTable]
 
 		primaryKeys, _, _ := infoSchema.GetConstraints(conv, SchemaAndName{Name: srcTable, Schema: srcSchema.Schema})
 
-		err := TriggerDataprocTemplate(srcTable, srcSchema.Schema, strings.Join(primaryKeys, ","), dataprocConfig) //infoSchema.ProcessData(conv, srcTable, srcSchema, spTable, spCols, spSchema)
+		id, err := TriggerDataprocTemplate(srcTable, srcSchema.Schema, strings.Join(primaryKeys, ","), dataprocConfig) //infoSchema.ProcessData(conv, srcTable, srcSchema, spTable, spCols, spSchema)
 		if err != nil {
-			return
+			return err
 		}
 		if conv.DataFlush != nil {
 			conv.DataFlush()
 		}
+
+		if !conv.Audit.DryRun {
+			progressCtr++
+			conv.Audit.Progress.MaybeReport(int64(progressCtr))
+		}
+
+		//TODO: eenclona@ will remove hardcoded us-central1
+		url := fmt.Sprintf("https://pantheon.corp.google.com/dataproc/batches/us-central1/%s", id)
+		conv.Audit.DataprocStats.DataprocJobUrls = append(conv.Audit.DataprocStats.DataprocJobUrls, url)
+		conv.Audit.DataprocStats.DataprocJobIds = append(conv.Audit.DataprocStats.DataprocJobIds, id)
+
 	}
+
+	return nil
 }
 
 // Function to trigger dataproc template
-func TriggerDataprocTemplate(srcTable string, srcSchema string, primaryKeys string, dataprocConfig map[string]string) error {
+func TriggerDataprocTemplate(srcTable string, srcSchema string, primaryKeys string, dataprocConfig map[string]string) (string, error) {
 	ctx := context.Background()
 
 	println("Triggering Dataproc template for " + srcSchema + "." + srcTable)
 
 	// Create the batch controller cliermnt.
-	batchEndpoint := fmt.Sprintf("%s-dataproc.googleapis.com:443", "us-west1")
+	batchEndpoint := fmt.Sprintf("%s-dataproc.googleapis.com:443", "us-central1")
 	batchClient, err := dataproc.NewBatchControllerClient(ctx, option.WithEndpoint(batchEndpoint))
 
 	if err != nil {
 		log.Fatalf("error creating the batch client: %s\n", err)
+		return "", err
 	}
 
 	defer batchClient.Close()
 
 	req := &dataprocpb.CreateBatchRequest{
-		Parent: "projects/yadavaja-sandbox/locations/us-west1",
+		Parent: "projects/yadavaja-sandbox/locations/us-central1",
 		Batch: &dataprocpb.Batch{
 			RuntimeConfig: &dataprocpb.RuntimeConfig{
 				Version: "1.1",
@@ -196,18 +218,22 @@ func TriggerDataprocTemplate(srcTable string, srcSchema string, primaryKeys stri
 
 	op, err := batchClient.CreateBatch(ctx, req)
 	if err != nil {
-		println("error creating the batch: %s\n", err)
+		println("error creating the batch: " + err.Error() + " \n")
+		return "", err
 	}
 
 	resp, err := op.Wait(ctx)
 	if err != nil {
-		println("error completing the batch: %s\n", err)
+		println("error completing the batch: " + err.Error() + " \n")
+		return "", err
 	}
 
 	batchName := resp.GetName()
 
-	println(batchName)
-	return nil
+	splittedBatchName := strings.Split(batchName, "/")
+	jobId := splittedBatchName[5]
+
+	return jobId, err
 }
 
 // SetRowStats populates conv with the number of rows in each table.

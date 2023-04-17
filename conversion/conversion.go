@@ -187,12 +187,8 @@ func performSnapshotMigration(config writer.BatchWriterConfig, conv *internal.Co
 	return batchWriter
 }
 
-func performDataprocMigration(sourceProfile profiles.SourceProfile, targetProfile profiles.TargetProfile, config writer.BatchWriterConfig, conv *internal.Conv, client *sp.Client, infoSchema common.InfoSchema) *writer.BatchWriter {
+func performDataprocMigration(sourceProfile profiles.SourceProfile, targetProfile profiles.TargetProfile, config writer.BatchWriterConfig, conv *internal.Conv, client *sp.Client, infoSchema common.InfoSchema) (*writer.BatchWriter, error) {
 	common.SetRowStats(conv, infoSchema)
-	totalRows := conv.Rows()
-	if !conv.Audit.DryRun {
-		conv.Audit.Progress = *internal.NewProgress(totalRows, "Writing data to Spanner", internal.Verbose(), false, int(internal.DataWriteInProgress))
-	}
 	batchWriter := populateDataConv(conv, config, client)
 
 	//Adding all dataproc configs to a map
@@ -215,9 +211,14 @@ func performDataprocMigration(sourceProfile profiles.SourceProfile, targetProfil
 		dataprocConfig["subnet"] = targetProfile.Dc.Subnetwork
 	}
 
-	common.ProcessDataWithDataproc(conv, infoSchema, dataprocConfig)
+	err := common.ProcessDataWithDataproc(conv, infoSchema, dataprocConfig)
+
+	if err != nil {
+		return batchWriter, err
+	}
+
 	batchWriter.Flush()
-	return batchWriter
+	return batchWriter, nil
 }
 
 func snapshotMigrationHandler(sourceProfile profiles.SourceProfile, config writer.BatchWriterConfig, conv *internal.Conv, client *sp.Client, infoSchema common.InfoSchema) (*writer.BatchWriter, error) {
@@ -238,11 +239,10 @@ func dataFromDatabase(ctx context.Context, sourceProfile profiles.SourceProfile,
 		return nil, err
 	}
 	var streamInfo map[string]interface{}
-	println(sourceProfile.Conn.Dataproc)
 	if sourceProfile.Conn.Dataproc {
 		//TODO if user choose dataproc template migration path
 		println("**********Dataproc flow started")
-		return performDataprocMigration(sourceProfile, targetProfile, config, conv, client, infoSchema), nil
+		return performDataprocMigration(sourceProfile, targetProfile, config, conv, client, infoSchema)
 	}
 	if sourceProfile.Conn.Streaming {
 		streamInfo, err = infoSchema.StartChangeDataCapture(ctx, conv)
