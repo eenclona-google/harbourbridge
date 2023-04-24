@@ -5,7 +5,7 @@ import { FetchService } from 'src/app/services/fetch/fetch.service'
 import { SnackbarService } from 'src/app/services/snackbar/snackbar.service'
 import ITargetDetails from 'src/app/model/target-details'
 import { ISessionSummary, ISpannerDetails } from 'src/app/model/conv'
-import IMigrationDetails, { IGeneratedResources, IProgress, ISourceAndTargetDetails } from 'src/app/model/migrate'
+import IMigrationDetails, { IGeneratedResources, IDataprocJobs, IProgress, ISourceAndTargetDetails } from 'src/app/model/migrate'
 import { Dataflow, Dataproc, InputType, MigrationDetails, MigrationModes, MigrationTypes, ProgressStatus, SourceDbNames, TargetDetails } from 'src/app/app.constants'
 import { interval, Subscription } from 'rxjs'
 import { DataService } from 'src/app/services/data/data.service'
@@ -69,7 +69,10 @@ export class PrepareMigrationComponent implements OnInit {
     DataStreamJobName: '',
     DataStreamJobUrl: '',
     DataflowJobName: '',
-    DataflowJobUrl: '',
+    DataflowJobUrl: ''
+  }
+  isDataprocJobsGenerated: boolean = false
+  dataprocJobsGenerated: IDataprocJobs = {
     DataprocJobUrls: [],
     DataprocJobIds: []
   }
@@ -496,8 +499,9 @@ export class PrepareMigrationComponent implements OnInit {
                 if (!displayDataprocMsg) {
                   this.snack.openSnackBar('Setting up Dataproc jobs', 'Close')
                   displayDataprocMsg = true
+                  this.fetchGeneratedResources()
                 }
-                this.fetchGeneratedResources()
+                this.fetchDataprocJobs()
               }
             }
             else if (res.ProgressStatus == ProgressStatus.ForeignKeyUpdateComplete) {
@@ -576,6 +580,21 @@ export class PrepareMigrationComponent implements OnInit {
     }
   }
 
+  fetchDataprocJobs() {
+    this.fetch.getDataprocJobs().subscribe({
+      next: (dprocJobs: IDataprocJobs) => {
+        this.isDataprocJobsGenerated = true
+        this.dataprocJobsGenerated = dprocJobs
+      },
+      error: (err: any) => {
+        this.snack.openSnackBar(err.error, 'Close')
+      },
+    })
+
+    this.isDprocMigrationRunning = true
+    
+  }
+
   markMigrationComplete() {
     this.subscription.unsubscribe();
     this.isMigrationInProgress = !this.isMigrationInProgress
@@ -610,7 +629,10 @@ export class PrepareMigrationComponent implements OnInit {
       DataStreamJobName: '',
       DataStreamJobUrl: '',
       DataflowJobName: '',
-      DataflowJobUrl: '',
+      DataflowJobUrl: ''
+    }
+    this.isDataprocJobsGenerated = false
+    this.dataprocJobsGenerated = {
       DataprocJobUrls: [],
       DataprocJobIds: []
     }

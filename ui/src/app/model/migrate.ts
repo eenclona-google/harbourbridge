@@ -15,7 +15,6 @@ export interface IProgress {
     ProgressStatus: number
 }
 
-// TODO: eenclona@ will probably need to update this with dataproc specific generated resources
 export interface IGeneratedResources {
     DatabaseName: string
     DatabaseUrl: string
@@ -25,6 +24,9 @@ export interface IGeneratedResources {
     DataStreamJobUrl: string
     DataflowJobName: string
     DataflowJobUrl: string
+}
+
+export interface IDataprocJobs {
     DataprocJobUrls: string[]
     DataprocJobIds: string[]
 }

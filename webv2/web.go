@@ -1670,12 +1670,20 @@ func getGeneratedResources(w http.ResponseWriter, r *http.Request) {
 		generatedResources.DataflowJobName = sessionState.Conv.Audit.StreamingStats.DataflowJobId
 		generatedResources.DataflowJobUrl = fmt.Sprintf("https://pantheon.corp.google.com/dataflow/jobs/%v/%v?project=%v", sessionState.Region, sessionState.Conv.Audit.StreamingStats.DataflowJobId, sessionState.GCPProjectID)
 	}
-	if len(sessionState.Conv.Audit.DataprocStats.DataprocJobUrls) > 0 {
-		generatedResources.DataprocJobUrls = sessionState.Conv.Audit.DataprocStats.DataprocJobUrls
-		generatedResources.DataprocJobIds = sessionState.Conv.Audit.DataprocStats.DataprocJobIds
-	}
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(generatedResources)
+}
+
+func getDataprocJobs(w http.ResponseWriter, r *http.Request) {
+	var dataprocJobs DataprocJobs
+	sessionState := session.GetSessionState()
+
+	if len(sessionState.Conv.Audit.DataprocStats.DataprocJobUrls) > 0 {
+		dataprocJobs.DataprocJobUrls = sessionState.Conv.Audit.DataprocStats.DataprocJobUrls
+		dataprocJobs.DataprocJobIds = sessionState.Conv.Audit.DataprocStats.DataprocJobIds
+	}
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(dataprocJobs)
 }
 
 func getSourceAndTargetProfiles(sessionState *session.SessionState, details migrationDetails) (profiles.SourceProfile, profiles.TargetProfile, utils.IOStreams, string, error) {
@@ -2180,8 +2188,11 @@ type GeneratedResources struct {
 	DataStreamJobUrl  string
 	DataflowJobName   string
 	DataflowJobUrl    string
-	DataprocJobUrls   []string
-	DataprocJobIds    []string
+}
+
+type DataprocJobs struct {
+	DataprocJobUrls []string
+	DataprocJobIds  []string
 }
 
 func addTypeToList(convertedType string, spType string, issues []internal.SchemaIssue, l []typeIssue) []typeIssue {
