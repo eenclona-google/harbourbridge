@@ -202,17 +202,17 @@ func resolveFks(conv *Conv, table string, fks []ddl.Foreignkey) []ddl.Foreignkey
 		var err error
 		if fk.ColIds, err = resolveColRefs(conv, table, fk.ColIds); err != nil {
 			conv.Unexpected(fmt.Sprintf("Can't resolve Columns in foreign key constraint: %s", err))
-			delete(conv.UsedNames, fk.Name)
+			delete(conv.UsedNames, strings.ToLower(fk.Name))
 			continue
 		}
 		if fk.ReferTableId, err = resolveTableRef(conv, fk.ReferTableId); err != nil {
 			conv.Unexpected(fmt.Sprintf("Can't resolve ReferTable in foreign key constraint: %s", err))
-			delete(conv.UsedNames, fk.Name)
+			delete(conv.UsedNames, strings.ToLower(fk.Name))
 			continue
 		}
 		if fk.ReferColumnIds, err = resolveColRefs(conv, fk.ReferTableId, fk.ReferColumnIds); err != nil {
 			conv.Unexpected(fmt.Sprintf("Can't resolve ReferColumnIds in foreign key constraint: %s", err))
-			delete(conv.UsedNames, fk.Name)
+			delete(conv.UsedNames, strings.ToLower(fk.Name))
 			continue
 		}
 		resolved = append(resolved, fk)
