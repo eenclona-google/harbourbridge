@@ -137,12 +137,18 @@ export class PrepareMigrationComponent implements OnInit {
         {
           name: 'Minimal downtime Migration',
           value: MigrationTypes.lowDowntimeMigration,
-        },
-        {
-          name: 'Migration via Dataproc',
-          value: MigrationTypes.dataprocMigration,
-        },
+        }
       ]
+      if (
+        this.sourceDatabaseType == SourceDbNames.MySQL.toLowerCase()
+      ) {
+        this.migrationTypes.push(
+          {
+            name: 'Migration via Dataproc',
+            value: MigrationTypes.dataprocMigration,
+          }
+        )
+      }  
     } else {
       this.selectedMigrationType = MigrationTypes.bulkMigration
       this.migrationTypes = [
@@ -198,12 +204,16 @@ export class PrepareMigrationComponent implements OnInit {
           {
             name: 'Minimal downtime Migration',
             value: MigrationTypes.lowDowntimeMigration,
-          },
-          {
-            name: 'Migration via Dataproc',
-            value: MigrationTypes.dataprocMigration
           }
         ]
+        if (
+          res.DatabaseType == SourceDbNames.MySQL.toLowerCase()
+        ) {
+          this.migrationTypes.push({
+            name: 'Migration via Dataproc',
+            value: MigrationTypes.dataprocMigration
+          })
+        }
         if (this.connectionType == InputType.DumpFile) {
           this.selectedMigrationType = MigrationTypes.bulkMigration
           this.migrationTypes = [
@@ -875,6 +885,7 @@ export class PrepareMigrationComponent implements OnInit {
     this.dataprocJobsGenerated = {
       DataprocJobUrls: [],
       DataprocJobIds: []
+     
     }
     this.initializeLocalStorage()
   }
