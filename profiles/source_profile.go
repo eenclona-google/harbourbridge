@@ -512,7 +512,7 @@ type SourceProfileConfig struct {
 func NewSourceProfileConfig(source string, path string) (SourceProfileConfig, error) {
 	//given the source, the fact that this 'config=', determine the appropiate object to marshal into
 	switch source {
-	case constants.MYSQL:
+	case constants.MYSQL, constants.POSTGRES:
 		//load the JSON configuration into file
 		configFile, err := ioutil.ReadFile(path)
 		if err != nil {
@@ -602,7 +602,7 @@ func (src SourceProfile) ToLegacyDriver(source string) (string, error) {
 	case SourceProfileTypeConfig:
 		{
 			switch strings.ToLower(source) {
-			case constants.MYSQL:
+			case constants.MYSQL, constants.POSTGRES:
 				return constants.MYSQL, nil
 			default:
 				return "", fmt.Errorf("specifying source-profile using config for non-mysql databases not implemented")
